@@ -1,0 +1,16 @@
+servers:
+  hosts:
+    music1:
+      ansible_host: 192.168.137.131
+
+#clients:
+#  hosts:
+#    music2:
+#      ansible_host: 192.168.239.22
+#    music3:
+#      ansible_host: 192.168.239.250
+
+music:
+  children:
+    servers:
+#    clients:

@@ -1,0 +1,14 @@
+- name: server
+  hosts: clients
+  tasks:
+    - name: Remove snapserver
+      apt:
+        name: snapserver
+        state: absent
+    
+    - name: Gather system facts
+      setup:
+
+    - name: Set hostname
+      hostname:
+        name: "{{ 'musicclient' + (ansible_facts['interfaces']['wlan0']['macaddress'] | regex_replace('.*(..{4})$', '\\1')) }}"

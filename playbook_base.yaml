@@ -1,0 +1,103 @@
+- name: base
+  hosts: all
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: Download snapclient .deb package
+      get_url:
+        url: https://github.com/badaix/snapcast/releases/download/v0.28.0/snapclient_0.28.0-1_arm64-bookworm.deb
+        dest: /tmp/snapclient.deb
+    - name: Install snapclient .deb package
+      apt:
+        deb: /tmp/snapclient.deb
+        state: present
+    - name: Clean up
+      file:
+        path: /tmp/snapclient.deb
+        state: absent
+    - name: Install avahi
+      apt:
+        name: avahi-daemon
+        state: present
+
+    - name: Install alsa
+      apt:
+        name: libasound2
+        state: present
+    
+    - name: Install alsa utils
+      apt:
+        name: alsa-utils
+        state: present
+
+    - name: Set the hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+      
+    - name: Ensure audio config is on
+      ansible.builtin.lineinfile:
+        path: /boot/config.txt
+        regexp: '^dtparam=audio='
+        line: 'dtparam=audio=on'
+      register: audio_config
+
+    - name: Remove disable codec
+      ansible.builtin.file:
+        path: /etc/modprobe.d/dietpi-disable_rpi_codec.conf
+        state: absent
+      register: codec
+
+    - name: Remove disable audio
+      ansible.builtin.file:
+        path: /etc/modprobe.d/dietpi-disable_rpi_audio.conf
+        state: absent
+      register: audio
+
+    - name: Add the snd-pcm module
+      community.general.modprobe:
+        name: snd-pcm
+        state: present
+        persistent: present
+      register: snd_pcm
+
+    - name: Add the snd-bcm2835 module
+      community.general.modprobe:
+        name: snd-bcm2835
+        state: present
+        persistent: present
+      register: snd_bcm2835
+
+    - name: Add the snd-timer module
+      community.general.modprobe:
+        name: snd-timer
+        state: present
+        persistent: present
+      register: snd_timer
+    
+    - name: Create WPA Supplicant configuration
+      template:
+        src: wpa_supplicant.conf.j2
+        dest: /etc/wpa_supplicant/wpa_supplicant.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Restart wlan0
+    
+    - name: Restart if anything changed
+      ansible.builtin.reboot:
+        reboot_command: reboot
+      when: audio_config.changed 
+        or snd_pcm.changed 
+        or snd_bcm2835.changed 
+        or snd_timer.changed 
+        or audio.changed 
+        or codec.changed 
+        or wpa_supplicant.changed
+  handlers:
+    - name: Restart wlan0
+      ansible.builtin.systemd_service:
+        state: restarted
+        daemon_reload: true
+        name: ifup@wlan0

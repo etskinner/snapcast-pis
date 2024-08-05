@@ -1,0 +1,66 @@
+- name: server
+  hosts: servers
+  tasks:
+    - name: Download snapserver .deb package
+      get_url:
+        url: https://github.com/badaix/snapcast/releases/download/v0.28.0/snapserver_0.28.0-1_arm64-bookworm.deb
+        dest: /tmp/snapserver.deb
+    - name: Install snapserver .deb package
+      apt:
+        deb: /tmp/snapserver.deb
+        state: present
+    - name: Clean up
+      file:
+        path: /tmp/snapserver.deb
+        state: absent
+    - name: Restart service snapserver
+      ansible.builtin.systemd_service:
+        state: restarted
+        daemon_reload: true
+        name: snapserver
+
+    - name: Check if Raspotify is already installed
+      stat:
+        path: /usr/bin/raspotify
+      register: raspotify_installed
+      
+    - name: Download Raspotify .deb package
+      get_url:
+        url: https://dtcooper.github.io/raspotify/raspotify-latest_arm64.deb
+        dest: /tmp/raspotify-latest.deb
+      when: not raspotify_installed.stat.exists
+
+    - name: Install Raspotify .deb package
+      apt:
+        deb: /tmp/raspotify-latest.deb
+        state: present
+      when: not raspotify_installed.stat.exists
+
+    - name: Stop Raspotify service
+      systemd:
+        name: raspotify
+        state: stopped
+
+    - name: Disable Raspotify service
+      systemd:
+        name: raspotify
+        enabled: no
+    - name: Clean up
+      file:
+        path: /tmp/raspotify-latest.deb
+        state: absent
+
+    - name: Copy snapserver.conf to target system
+      copy:
+        src: server/snapserver.conf
+        dest: /etc/snapserver.conf
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Copy snapserver profile to target system
+      copy:
+        src: server/default_snapserver
+        dest: /etc/default/snapserver
+        owner: root
+        group: root
+        mode: '0644'
