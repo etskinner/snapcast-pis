@@ -1,7 +1,7 @@
 servers:
   hosts:
     music1:
-      ansible_host: 192.168.137.131
+      ansible_host: 10.0.128.28
 
 #clients:
 #  hosts:

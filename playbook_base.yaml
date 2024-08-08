@@ -3,22 +3,34 @@
   vars_files:
     - secrets.yml
   tasks:
+    - name: Check if snapclient is already downloaded
+      stat:
+        path: /tmp/snapclient.deb
+      register: snapclient_deb
     - name: Download snapclient .deb package
       get_url:
         url: https://github.com/badaix/snapcast/releases/download/v0.28.0/snapclient_0.28.0-1_arm64-bookworm.deb
         dest: /tmp/snapclient.deb
+      when: not snapclient_deb.stat.exists
+
     - name: Install snapclient .deb package
       apt:
         deb: /tmp/snapclient.deb
         state: present
-    - name: Clean up
-      file:
-        path: /tmp/snapclient.deb
-        state: absent
     - name: Install avahi
       apt:
         name: avahi-daemon
         state: present
+
+    - name: Install cron
+      apt:
+        name: cron
+        state: present
+    - name: Use cron to set 0db minutely
+      cron:
+        name: "amixer set PCM 0db"
+        minute: "*"
+        job: "/usr/bin/amixer set PCM 0db"
 
     - name: Install alsa
       apt:
@@ -84,6 +96,7 @@
         mode: '0644'
       notify:
         - Restart wlan0
+      register: wpa_supplicant
     
     - name: Restart if anything changed
       ansible.builtin.reboot:

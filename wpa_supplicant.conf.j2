@@ -6,4 +6,13 @@ network={
     ssid="{{ ssid }}"
     key_mgmt=WPA-PSK
     psk="{{ psk }}"
+    priority=20
 }
+
+network={
+    ssid="{{ backup_ssid }}"
+    key_mgmt=WPA-PSK
+    psk="{{ backup_psk }}"
+    priority=10
+}
+
